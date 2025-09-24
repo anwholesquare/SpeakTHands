@@ -7,7 +7,9 @@ class GestureModel {
   final String id;
   final String name;
   final String workspaceId;
+  final String description;
   final SensorData sensorData;
+  final String sensorPattern; // New field for knuckle pattern (e.g., "10101")
   final Map<String, String> textMappings; // Language code -> text
   final String? audioPath; // Path to TTS audio file
   final DateTime createdAt;
@@ -17,7 +19,9 @@ class GestureModel {
     required this.id,
     required this.name,
     required this.workspaceId,
+    this.description = '',
     required this.sensorData,
+    required this.sensorPattern,
     required this.textMappings,
     this.audioPath,
     required this.createdAt,
@@ -29,7 +33,9 @@ class GestureModel {
       id: json['id'] as String,
       name: json['name'] as String,
       workspaceId: json['workspaceId'] as String,
+      description: json['description'] as String? ?? '',
       sensorData: SensorData.fromJson(json['sensorData'] as Map<String, dynamic>),
+      sensorPattern: json['sensorPattern'] as String? ?? '',
       textMappings: Map<String, String>.from(json['textMappings'] as Map),
       audioPath: json['audioPath'] as String?,
       createdAt: DateTime.parse(json['createdAt'] as String),
@@ -42,7 +48,9 @@ class GestureModel {
       'id': id,
       'name': name,
       'workspaceId': workspaceId,
+      'description': description,
       'sensorData': sensorData.toJson(),
+      'sensorPattern': sensorPattern,
       'textMappings': textMappings,
       'audioPath': audioPath,
       'createdAt': createdAt.toIso8601String(),
@@ -54,7 +62,9 @@ class GestureModel {
     String? id,
     String? name,
     String? workspaceId,
+    String? description,
     SensorData? sensorData,
+    String? sensorPattern,
     Map<String, String>? textMappings,
     String? audioPath,
     DateTime? createdAt,
@@ -64,7 +74,9 @@ class GestureModel {
       id: id ?? this.id,
       name: name ?? this.name,
       workspaceId: workspaceId ?? this.workspaceId,
+      description: description ?? this.description,
       sensorData: sensorData ?? this.sensorData,
+      sensorPattern: sensorPattern ?? this.sensorPattern,
       textMappings: textMappings ?? this.textMappings,
       audioPath: audioPath ?? this.audioPath,
       createdAt: createdAt ?? this.createdAt,

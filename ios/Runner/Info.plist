@@ -2,6 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>CADisableMinimumFrameDurationOnPhone</key>
+	<true/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
@@ -24,6 +26,30 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>SpeakTHands needs Bluetooth access to connect with ESP32 devices for gesture recognition and communication.</string>
+	<key>NSBluetoothPeripheralUsageDescription</key>
+	<string>SpeakTHands uses Bluetooth to communicate with ESP32 flex sensor devices for hand gesture detection.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>This app needs location permission for Bluetooth Low Energy scanning</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>This app needs location permission for Bluetooth Low Energy scanning</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>SpeakTHands needs location access to scan for nearby Bluetooth devices.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>SpeakTHands may use microphone access for voice testing and calibration features.</string>
+	<key>UIApplicationSupportsIndirectInputEvents</key>
+	<true/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>bluetooth-peripheral</string>
+		<string>remote-notification</string>
+		<string>location</string>
+		<string>bluetooth-central</string>
+		<string>nearby-interaction</string>
+		<string>fetch</string>
+		<string>processing</string>
+	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
@@ -41,23 +67,5 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
-	<key>CADisableMinimumFrameDurationOnPhone</key>
-	<true/>
-	<key>UIApplicationSupportsIndirectInputEvents</key>
-	<true/>
-	
-	<!-- Bluetooth permissions -->
-	<key>NSBluetoothAlwaysUsageDescription</key>
-	<string>SpeakTHands needs Bluetooth access to connect with ESP32 devices for gesture recognition and communication.</string>
-	<key>NSBluetoothPeripheralUsageDescription</key>
-	<string>SpeakTHands uses Bluetooth to communicate with ESP32 flex sensor devices for hand gesture detection.</string>
-	
-	<!-- Location permission (required for Bluetooth scanning on iOS) -->
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>SpeakTHands needs location access to scan for nearby Bluetooth devices.</string>
-	
-	<!-- Microphone permission (for TTS testing) -->
-	<key>NSMicrophoneUsageDescription</key>
-	<string>SpeakTHands may use microphone access for voice testing and calibration features.</string>
 </dict>
 </plist>

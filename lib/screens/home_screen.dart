@@ -5,6 +5,8 @@ import '../widgets/gradient_card.dart';
 import 'demo_device_screen.dart';
 import 'workspace_screen.dart';
 import 'settings_screen.dart';
+import 'infer_screen.dart';
+import 'bluetooth_test_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -19,6 +21,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final List<String> _titles = [
     'Dashboard',
     'Gestures',
+    'Infer',
     'Settings',
   ];
 
@@ -97,6 +100,21 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           
+          // Debug Bluetooth Test
+          IconButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const BluetoothTestScreen(),
+                ),
+              );
+            },
+            icon: const Icon(
+              Icons.bluetooth,
+              color: AppTheme.textPrimary,
+            ),
+          ),
           // Notification Icon
           IconButton(
             onPressed: () {
@@ -119,6 +137,8 @@ class _HomeScreenState extends State<HomeScreen> {
       case 1:
         return _buildGestures();
       case 2:
+        return const InferScreen();
+      case 3:
         return _buildSettings();
       default:
         return _buildDashboard();
@@ -748,6 +768,7 @@ class _HomeScreenState extends State<HomeScreen> {
         },
         backgroundColor: Colors.transparent,
         elevation: 0,
+        type: BottomNavigationBarType.fixed,
         items: [
           BottomNavigationBarItem(
             icon: Icon(MdiIcons.viewDashboard),
@@ -756,6 +777,10 @@ class _HomeScreenState extends State<HomeScreen> {
           BottomNavigationBarItem(
             icon: Icon(MdiIcons.gestureSwipe),
             label: 'Gestures',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(MdiIcons.handBackLeft),
+            label: 'Infer',
           ),
           BottomNavigationBarItem(
             icon: Icon(MdiIcons.cog),

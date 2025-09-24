@@ -817,7 +817,9 @@ class _CreateGestureScreenState extends State<CreateGestureScreen>
       final gesture = isEditing
           ? widget.gesture!.copyWith(
               name: _nameController.text.trim(),
+              description: widget.gesture!.description,
               sensorData: sensorData,
+              sensorPattern: widget.gesture!.sensorPattern,
               textMappings: textMappings,
               updatedAt: now,
             )
@@ -825,7 +827,9 @@ class _CreateGestureScreenState extends State<CreateGestureScreen>
               id: uuid.v4(),
               name: _nameController.text.trim(),
               workspaceId: widget.workspace.id,
+              description: '',
               sensorData: sensorData,
+              sensorPattern: '',
               textMappings: textMappings,
               createdAt: now,
               updatedAt: now,

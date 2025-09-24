@@ -22,8 +22,9 @@ class DatabaseService {
     
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
     );
   }
 
@@ -48,12 +49,14 @@ class DatabaseService {
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
         workspaceId TEXT NOT NULL,
+        description TEXT,
         thumb INTEGER NOT NULL,
         indexFinger INTEGER NOT NULL,
         middle INTEGER NOT NULL,
         ring INTEGER NOT NULL,
         pinky INTEGER NOT NULL,
         handRotation INTEGER NOT NULL,
+        sensorPattern TEXT,
         textMappings TEXT NOT NULL,
         audioPath TEXT,
         createdAt TEXT NOT NULL,
@@ -65,6 +68,14 @@ class DatabaseService {
     // Create indexes
     await db.execute('CREATE INDEX idx_gestures_workspace ON gestures(workspaceId)');
     await db.execute('CREATE INDEX idx_gestures_created ON gestures(createdAt)');
+  }
+
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      // Add new columns for version 2
+      await db.execute('ALTER TABLE gestures ADD COLUMN description TEXT');
+      await db.execute('ALTER TABLE gestures ADD COLUMN sensorPattern TEXT');
+    }
   }
 
   // Workspace operations
@@ -128,12 +139,14 @@ class DatabaseService {
       'id': gesture.id,
       'name': gesture.name,
       'workspaceId': gesture.workspaceId,
+      'description': gesture.description,
       'thumb': gesture.sensorData.thumb,
       'indexFinger': gesture.sensorData.indexFinger,
       'middle': gesture.sensorData.middle,
       'ring': gesture.sensorData.ring,
       'pinky': gesture.sensorData.pinky,
       'handRotation': gesture.sensorData.handRotation,
+      'sensorPattern': gesture.sensorPattern,
       'textMappings': _encodeTextMappings(gesture.textMappings),
       'audioPath': gesture.audioPath,
       'createdAt': gesture.createdAt.toIso8601String(),
@@ -195,12 +208,14 @@ class DatabaseService {
       'id': gesture.id,
       'name': gesture.name,
       'workspaceId': gesture.workspaceId,
+      'description': gesture.description,
       'thumb': gesture.sensorData.thumb,
       'indexFinger': gesture.sensorData.indexFinger,
       'middle': gesture.sensorData.middle,
       'ring': gesture.sensorData.ring,
       'pinky': gesture.sensorData.pinky,
       'handRotation': gesture.sensorData.handRotation,
+      'sensorPattern': gesture.sensorPattern,
       'textMappings': _encodeTextMappings(gesture.textMappings),
       'audioPath': gesture.audioPath,
       'createdAt': gesture.createdAt.toIso8601String(),
@@ -241,6 +256,7 @@ class DatabaseService {
       id: map['id'] as String,
       name: map['name'] as String,
       workspaceId: map['workspaceId'] as String,
+      description: map['description'] as String? ?? '',
       sensorData: SensorData(
         thumb: map['thumb'] as int,
         indexFinger: map['indexFinger'] as int,
@@ -249,6 +265,7 @@ class DatabaseService {
         pinky: map['pinky'] as int,
         handRotation: map['handRotation'] as int,
       ),
+      sensorPattern: map['sensorPattern'] as String? ?? '',
       textMappings: _decodeTextMappings(map['textMappings'] as String),
       audioPath: map['audioPath'] as String?,
       createdAt: DateTime.parse(map['createdAt'] as String),

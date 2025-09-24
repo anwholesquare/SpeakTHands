@@ -1,15 +1,24 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../models/hand_sensor_data.dart';
 
-class BluetoothService extends ChangeNotifier {
+class ESP32BluetoothService extends ChangeNotifier {
   static const String deviceName = 'HandsOnSync-ESP32';
   static const String serviceUuid = '6E400001-B5A3-F393-E0A9-E50E24DCCA9E';
   static const String txCharacteristicUuid = '6E400003-B5A3-F393-E0A9-E50E24DCCA9E'; // Notify
   static const String rxCharacteristicUuid = '6E400002-B5A3-F393-E0A9-E50E24DCCA9E'; // Write
+
+  // Singleton pattern to prevent multiple instances
+  static ESP32BluetoothService? _instance;
+  factory ESP32BluetoothService() {
+    _instance ??= ESP32BluetoothService._internal();
+    return _instance!;
+  }
+  ESP32BluetoothService._internal();
 
   BluetoothDevice? _connectedDevice;
   BluetoothCharacteristic? _txCharacteristic;
@@ -48,6 +57,7 @@ class BluetoothService extends ChangeNotifier {
     _sensorDataController.close();
     _connectionStateController.close();
     _availableDevicesController.close();
+    _instance = null; // Reset singleton instance
     super.dispose();
   }
 
@@ -68,10 +78,34 @@ class BluetoothService extends ChangeNotifier {
       }
 
       // Check if Bluetooth is enabled
-      final isOn = await FlutterBluePlus.isOn;
-      if (!isOn) {
-        debugPrint('Bluetooth is turned off');
-        return false;
+      if (Platform.isIOS) {
+        // On iOS, check adapter state with timeout
+        try {
+          final adapterState = await FlutterBluePlus.adapterState.first.timeout(
+            const Duration(seconds: 5),
+            onTimeout: () {
+              debugPrint('iOS Bluetooth state check timed out, continuing anyway');
+              return BluetoothAdapterState.on;
+            },
+          );
+          
+          debugPrint('iOS Bluetooth adapter state: $adapterState');
+          // Continue initialization regardless of state on iOS
+        } catch (e) {
+          debugPrint('Error checking iOS Bluetooth state: $e, continuing anyway');
+        }
+      } else {
+        // Android - check if Bluetooth is on
+        try {
+          final adapterState = await FlutterBluePlus.adapterState.first;
+          if (adapterState != BluetoothAdapterState.on) {
+            debugPrint('Android Bluetooth is not enabled. State: $adapterState');
+            return false;
+          }
+        } catch (e) {
+          debugPrint('Error checking Android Bluetooth state: $e');
+          return false;
+        }
       }
 
       debugPrint('Bluetooth service initialized successfully');
@@ -84,6 +118,14 @@ class BluetoothService extends ChangeNotifier {
 
   /// Request necessary Bluetooth permissions
   Future<bool> _requestPermissions() async {
+    if (Platform.isIOS) {
+      // On iOS, Bluetooth permissions are handled automatically by the system
+      // when you try to use Bluetooth features. No explicit permission request needed.
+      debugPrint('iOS detected - Bluetooth permissions handled by system');
+      return true;
+    }
+
+    // Android permissions
     final permissions = [
       Permission.bluetoothScan,
       Permission.bluetoothConnect,
@@ -91,15 +133,81 @@ class BluetoothService extends ChangeNotifier {
       Permission.locationWhenInUse,
     ];
 
+    bool allGranted = true;
+    final deniedPermissions = <Permission>[];
+
     for (final permission in permissions) {
-      final status = await permission.request();
-      if (status != PermissionStatus.granted) {
-        debugPrint('Permission $permission not granted: $status');
-        return false;
+      final status = await permission.status;
+      
+      if (status == PermissionStatus.granted) {
+        continue;
+      }
+      
+      if (status == PermissionStatus.permanentlyDenied) {
+        debugPrint('Permission $permission is permanently denied');
+        deniedPermissions.add(permission);
+        allGranted = false;
+        continue;
+      }
+      
+      // Try to request permission
+      final requestResult = await permission.request();
+      if (requestResult != PermissionStatus.granted) {
+        debugPrint('Permission $permission not granted: $requestResult');
+        deniedPermissions.add(permission);
+        allGranted = false;
       }
     }
 
-    return true;
+    if (!allGranted && deniedPermissions.isNotEmpty) {
+      debugPrint('Some permissions are denied. User needs to enable them manually.');
+    }
+
+    return allGranted;
+  }
+
+  /// Check if permissions need to be enabled manually in settings
+  Future<bool> needsManualPermissionSetup() async {
+    // FlutterBluePlus uses static methods, no instance needed
+    
+    try {
+      final isSupported = await FlutterBluePlus.isSupported;
+      if (!isSupported) {
+        return true; // Device doesn't support Bluetooth
+      }
+      
+      final adapterState = await FlutterBluePlus.adapterState.first;
+      if (adapterState != BluetoothAdapterState.on) {
+        return true; // Bluetooth is off
+      }
+
+      // Check permissions on Android
+      if (Platform.isAndroid) {
+        final permissions = [
+          Permission.bluetoothScan,
+          Permission.bluetoothConnect,
+          Permission.bluetoothAdvertise,
+          Permission.locationWhenInUse,
+        ];
+
+        for (final permission in permissions) {
+          final status = await permission.status;
+          if (status == PermissionStatus.permanentlyDenied) {
+            return true;
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Error checking Bluetooth state: $e');
+      return true;
+    }
+    
+    return false;
+  }
+
+  /// Open app settings for manual permission configuration
+  Future<bool> openSettings() async {
+    return await openAppSettings();
   }
 
   /// Start scanning for ESP32 devices
@@ -111,23 +219,47 @@ class BluetoothService extends ChangeNotifier {
       _availableDevices.clear();
       notifyListeners();
 
+      debugPrint('Starting BLE scan...');
+
       // Start scanning
       _scanSubscription = FlutterBluePlus.scanResults.listen((results) {
         final devices = <BluetoothDevice>[];
+        final esp32Devices = <BluetoothDevice>[];
+        final otherDevices = <BluetoothDevice>[];
         
         for (final result in results) {
-          // Filter for our ESP32 device or devices with the correct service
-          if (result.device.platformName.contains(deviceName) ||
-              result.advertisementData.serviceUuids.contains(serviceUuid)) {
+          debugPrint('Found device: ${result.device.platformName} (${result.device.remoteId})');
+          debugPrint('Service UUIDs: ${result.advertisementData.serviceUuids}');
+          
+          // Add all devices with names (skip unnamed devices to reduce clutter)
+          if (result.device.platformName.isNotEmpty) {
             if (!devices.any((d) => d.remoteId == result.device.remoteId)) {
-              devices.add(result.device);
+              // Check if it's an ESP32 or related device
+              final isESP32 = isESP32Device(result.device) ||
+                             result.advertisementData.serviceUuids.any((uuid) => 
+                               uuid.toString().toUpperCase() == serviceUuid.toUpperCase());
+              
+              if (isESP32) {
+                esp32Devices.add(result.device);
+                debugPrint('Added ESP32 device: ${result.device.platformName}');
+              } else {
+                otherDevices.add(result.device);
+                debugPrint('Added other device: ${result.device.platformName}');
+              }
             }
           }
         }
 
-        _availableDevices = devices;
-        _availableDevicesController.add(_availableDevices);
-        notifyListeners();
+        // Combine devices with ESP32 devices first
+        devices.addAll(esp32Devices);
+        devices.addAll(otherDevices);
+
+        if (devices.length != _availableDevices.length) {
+          _availableDevices = devices;
+          _availableDevicesController.add(_availableDevices);
+          notifyListeners();
+          debugPrint('Updated available devices: ${devices.length} (${esp32Devices.length} ESP32, ${otherDevices.length} other)');
+        }
       });
 
       await FlutterBluePlus.startScan(timeout: timeout);
@@ -151,6 +283,7 @@ class BluetoothService extends ChangeNotifier {
       _scanSubscription?.cancel();
       _isScanning = false;
       notifyListeners();
+      debugPrint('Stopped BLE scan');
     } catch (e) {
       debugPrint('Error stopping scan: $e');
     }
@@ -284,6 +417,15 @@ class BluetoothService extends ChangeNotifier {
     _rxCharacteristic = null;
     _latestSensorData = null;
     _updateConnectionState(BluetoothConnectionState.disconnected);
+  }
+
+  /// Check if a device is likely an ESP32 or hand tracking device
+  bool isESP32Device(BluetoothDevice device) {
+    final name = device.platformName.toLowerCase();
+    return name.contains(deviceName.toLowerCase()) ||
+           name.contains('esp32') ||
+           name.contains('nimble') ||
+           name.contains('handsonsync');
   }
 
   /// Get connection status as human-readable string

@@ -162,7 +162,7 @@ This is a project by HandsonSync. For development guidelines and contribution in
 
 ### ESP32 Setup
 - ESP32 development board
-- 5x Flex sensors (for finger detection)
+- 9x 44E Hall Effect Sensor
 - Resistors and breadboard for circuit assembly
 - Bluetooth Classic/LE capability
 
